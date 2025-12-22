@@ -9,14 +9,12 @@ import { randomBytes } from "crypto";
 
 export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
-  if (!videoId) {
-    throw new BadRequestError("Invalid video ID");
-  };
+  if (!videoId) throw new BadRequestError("Invalid video ID");
 
   const token = getBearerToken(req.headers);
-  const userID = validateJWT(token, cfg.jwtSecret);
+  const userId = validateJWT(token, cfg.jwtSecret);
 
-  console.log("uploading thumbnail for video", videoId, "by user", userID);
+  console.log("uploading thumbnail for video", videoId, "by user", userId);
 
   const formData = await req.formData();
   const image = formData.get('thumbnail');
@@ -25,7 +23,6 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
   };
 
   const MAX_UPLOAD_SIZE = 10 << 20;
-
   if (image.size > MAX_UPLOAD_SIZE) {
     throw new BadRequestError('Thumbnail file size exceeds max allowed size');
   };
@@ -38,18 +35,16 @@ export async function handlerUploadThumbnail(cfg: ApiConfig, req: BunRequest) {
   };
 
   const fileExt = mediaType.split('/')[1];
-  const base64String = randomBytes(32).toString('base64');
+  const base64String = randomBytes(32).toString('base64url');
   const imagePath = `${base64String}.${fileExt}`;
   const imageArrayBuffer = await image.arrayBuffer();
   const imageBuffer = Buffer.from(imageArrayBuffer);
   const imageFilePath = path.join(cfg.assetsRoot, imagePath);
   Bun.write(imageFilePath, imageBuffer);
   const videoMetadata = getVideo(cfg.db, videoId);
-  if (!videoMetadata) {
-    throw new NotFoundError('Cannot find video');
-  }
+  if (!videoMetadata) throw new NotFoundError('Video not found');
 
-  if (userID !== videoMetadata.userID) {
+  if (userId !== videoMetadata.userID) {
     throw new UserForbiddenError('Forbidden');
   };
 
