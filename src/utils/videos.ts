@@ -2,7 +2,7 @@ import type { FfprobeOutput } from "../types/ffmpeg";
 
 export async function getVideoAspectRatio(filePath: string): Promise<'landscape' | 'portrait' | 'other'> {
   if (!filePath) throw new Error('File path is required');
-  const proc = Bun.spawn([
+  const process = Bun.spawn([
     'ffprobe',
     '-v', 'error',
     '-select_streams', 'v:0',
@@ -11,10 +11,10 @@ export async function getVideoAspectRatio(filePath: string): Promise<'landscape'
     filePath
   ]);
 
-  const stdoutText = await new Response(proc.stdout).text();
-  const stderrText = await new Response(proc.stderr).text();
+  const stdoutText = await new Response(process.stdout).text();
+  const stderrText = await new Response(process.stderr).text();
 
-  const exitCode = await proc.exited;
+  const exitCode = await process.exited;
   if (exitCode !== 0) {
     throw new Error(`ffprobe failed (exit ${exitCode}): ${stderrText}`);
   };
