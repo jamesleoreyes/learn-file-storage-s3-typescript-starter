@@ -5,7 +5,7 @@ import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
 import { randomBytes } from 'crypto';
 import { respondWithJSON } from "./json";
-import { getVideoAspectRatio, processVideoForFastStart } from "../utils/videos";
+import { dbVideoToSignedVideo, getVideoAspectRatio, processVideoForFastStart } from "../utils/videos";
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
@@ -38,7 +38,7 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
 
   const tempFileName = `${randomBytes(32).toString('hex')}.mp4`;
   const filePath = `assets/${tempFileName}`
-  
+
   await Bun.write(filePath, video);
   const processedFilePath = await processVideoForFastStart(filePath);
   const fileContents = Bun.file(processedFilePath);
@@ -51,10 +51,11 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
     type: 'video/mp4'
   });
 
-  videoMetadata.videoURL = `https://${cfg.s3Bucket}.s3.${cfg.s3Region}.amazonaws.com/${fileName}`;
+  videoMetadata.videoURL = fileName;
   updateVideo(cfg.db, videoMetadata);
 
   await fileContents.delete();
 
-  return respondWithJSON(200, videoMetadata);
+  const signedVideo = dbVideoToSignedVideo(cfg, videoMetadata);
+  return respondWithJSON(200, signedVideo);
 };

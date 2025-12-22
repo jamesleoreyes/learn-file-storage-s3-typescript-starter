@@ -4,6 +4,7 @@
     "extradata",
     "faststart",
     "movflags",
+    "presign",
     "timecode"
   ]
 }

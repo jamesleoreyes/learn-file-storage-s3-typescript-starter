@@ -1,3 +1,5 @@
+import type { ApiConfig } from "../config";
+import type { Video } from "../db/videos";
 import type { FfprobeOutput } from "../types/ffmpeg";
 
 export async function getVideoAspectRatio(filePath: string): Promise<'landscape' | 'portrait' | 'other'> {
@@ -29,7 +31,7 @@ export async function getVideoAspectRatio(filePath: string): Promise<'landscape'
   if (!output.streams || output.streams.length === 0) {
     throw new Error('No video streams found');
   };
-  
+
   const videoWidth = output.streams[0].width;
   const videoHeight = output.streams[0].height;
 
@@ -38,7 +40,7 @@ export async function getVideoAspectRatio(filePath: string): Promise<'landscape'
   }
 
   const aspectRatio = videoWidth / videoHeight;
-  
+
   const landscapeRatio = 16 / 9;
   const portraitRatio = 9 / 16;
   const tolerance = 0.01;
@@ -46,11 +48,11 @@ export async function getVideoAspectRatio(filePath: string): Promise<'landscape'
   if (Math.abs(aspectRatio - landscapeRatio) < tolerance) {
     return 'landscape';
   }
-  
+
   if (Math.abs(aspectRatio - portraitRatio) < tolerance) {
     return 'portrait';
   }
-  
+
   return 'other';
 };
 
@@ -78,3 +80,17 @@ export async function processVideoForFastStart(inputFilePath: string) {
 
   return outputFilePath;
 };
+
+export function generatePresignedURL(cfg: ApiConfig, key: string, expireTime: number) {
+  const presignedUrl = cfg.s3Client.presign(key, { expiresIn: expireTime });
+  return presignedUrl;
+};
+
+export function dbVideoToSignedVideo(cfg: ApiConfig, video: Video) {
+  if (!video.videoURL) return video;
+  const presignedUrl = generatePresignedURL(cfg, video.videoURL, 900);
+  return {
+    ...video,
+    videoURL: presignedUrl,
+  }
+}
