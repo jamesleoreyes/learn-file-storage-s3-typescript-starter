@@ -53,3 +53,28 @@ export async function getVideoAspectRatio(filePath: string): Promise<'landscape'
   
   return 'other';
 };
+
+export async function processVideoForFastStart(inputFilePath: string) {
+  const outputFilePath = `${inputFilePath}.processed`;
+  const process = Bun.spawn([
+    'ffmpeg',
+    '-i',
+    inputFilePath,
+    '-movflags',
+    'faststart',
+    '-map_metadata',
+    '0',
+    '-codec',
+    'copy',
+    '-f',
+    'mp4',
+    outputFilePath
+  ]);
+
+  const exitCode = await process.exited;
+  if (exitCode !== 0) {
+    throw new Error(`ffmpeg failed (exit ${exitCode})`);
+  };
+
+  return outputFilePath;
+};

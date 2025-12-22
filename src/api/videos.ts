@@ -5,7 +5,7 @@ import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
 import { randomBytes } from 'crypto';
 import { respondWithJSON } from "./json";
-import { getVideoAspectRatio } from "../utils/videos";
+import { getVideoAspectRatio, processVideoForFastStart } from "../utils/videos";
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
@@ -38,11 +38,12 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
 
   const tempFileName = `${randomBytes(32).toString('hex')}.mp4`;
   const filePath = `assets/${tempFileName}`
-
+  
   await Bun.write(filePath, video);
-  const fileContents = Bun.file(filePath);
+  const processedFilePath = await processVideoForFastStart(filePath);
+  const fileContents = Bun.file(processedFilePath);
 
-  const aspectRatio = await getVideoAspectRatio(filePath);
+  const aspectRatio = await getVideoAspectRatio(processedFilePath);
   const fileName = `${aspectRatio}/${tempFileName}`;
 
   const s3File = cfg.s3Client.file(fileName);
