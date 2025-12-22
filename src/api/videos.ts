@@ -5,6 +5,7 @@ import { getBearerToken, validateJWT } from "../auth";
 import { getVideo, updateVideo } from "../db/videos";
 import { randomBytes } from 'crypto';
 import { respondWithJSON } from "./json";
+import { getVideoAspectRatio } from "../utils/videos";
 
 export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
   const { videoId } = req.params as { videoId?: string };
@@ -35,11 +36,14 @@ export async function handlerUploadVideo(cfg: ApiConfig, req: BunRequest) {
     throw new BadRequestError('Invalid video file type');
   };
 
-  const fileName = `${randomBytes(32).toString('hex')}.mp4`;
-  const filePath = `assets/${fileName}`
+  const tempFileName = `${randomBytes(32).toString('hex')}.mp4`;
+  const filePath = `assets/${tempFileName}`
 
   await Bun.write(filePath, video);
   const fileContents = Bun.file(filePath);
+
+  const aspectRatio = await getVideoAspectRatio(filePath);
+  const fileName = `${aspectRatio}/${tempFileName}`;
 
   const s3File = cfg.s3Client.file(fileName);
   await s3File.write(fileContents, {
